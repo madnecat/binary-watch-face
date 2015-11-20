@@ -59,8 +59,8 @@ static void init_pos_circles() {
   MN_center_2 = GPoint((bounds.size.w / 9) * 8, bounds.size.h / 3.25);
   MN_center_4 = GPoint((bounds.size.w / 9) * 8, (bounds.size.h / 3.25) * 2.25);
   MN_center_8 = GPoint(bounds.size.w / 2, bounds.size.h - bounds.size.h / 15);
-  MN_center_16 = GPoint(bounds.size.w / 9, bounds.size.h / 3.25);
-  MN_center_32 = GPoint(bounds.size.w / 9, (bounds.size.h / 3.25) * 2.25);
+  MN_center_16 = GPoint(bounds.size.w / 9, (bounds.size.h / 3.25) * 2.25);
+  MN_center_32 = GPoint(bounds.size.w / 9, bounds.size.h / 3.25);
   
   //coordonnées des points des heures
   HR_center_1 = GPoint(bounds.size.w / 2, bounds.size.h / 4.5);
