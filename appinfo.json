@@ -11,7 +11,17 @@
     "longName": "Binary by Necat",
     "projectType": "native",
     "resources": {
-        "media": []
+        "media": [
+            {
+                "file": "fonts/8-bit_wonder.ttf",
+                "name": "EIGHT_BIT_20",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "font"
+            }
+        ]
     },
     "sdkVersion": "3",
     "shortName": "Binary",
