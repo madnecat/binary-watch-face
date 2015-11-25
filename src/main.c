@@ -31,8 +31,8 @@ GColor HR_color;
 //conteneurs de l'heure actuelle
 int hour, minutes;
 
-//incrément de dessin d'animation !! valeur de base 99 pour détection du premier dessin
-int inc = 99;
+//incrément de dessin d'animation !! valeur de base -10 pour détection du premier dessin
+int inc = -10;
 
 //booléen de choix du type de dessin
 bool deDrawing = false;
@@ -267,7 +267,7 @@ void global_layer_update_proc(Layer *layer, GContext *ctx) {
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   //si dessin normal
-  if (inc != 99) {
+  if (inc != -10) {
   
     //dédraw des cercles
     app_timer_register(_DELTA_ANIM, deDrawingHandler, NULL);  
@@ -320,6 +320,11 @@ static void main_window_unload(Window *window) {
 //fonction d'initialisation du contexte
 void init(void) {
   
+  //initialisation des couleurs / TODO paramétrer avec la page de config
+  BG_color = GColorBlack;
+  HR_color = GColorCyan;
+  MN_color = GColorRed;
+  
   // Create main Window element and assign to pointer
   s_main_window = window_create();
   
@@ -339,11 +344,6 @@ void init(void) {
   s_global_layer = layer_create(GRect(0, 0, bounds.size.w, bounds.size.h));
   layer_set_update_proc(s_global_layer, global_layer_update_proc);
   layer_add_child(root_layer, s_global_layer);
-  
-  //initialisation des couleurs / TODO paramétrer avec la page de config
-  BG_color = GColorBlack;
-  HR_color = GColorCyan;
-  MN_color = GColorRed;
   
   // Show the Window on the watch, with animated=true
   window_stack_push(s_main_window, true);
