@@ -6,6 +6,9 @@
 //rayon du cercle vide
 #define _RADIUS_0 6
 
+//delta d'animation
+#define _DELTA_ANIM 100
+
 //screen size : 144 * 168
 
 // ****************
@@ -25,11 +28,14 @@ GColor BG_color;
 GColor MN_color;
 GColor HR_color;
 
-//booléen de premier déclenchement du time handler
-bool first_time_handler = true;
-
 //conteneurs de l'heure actuelle
 int hour, minutes;
+
+//incrément de dessin d'animation !! valeur de base 99 pour détection du premier dessin
+int inc = 99;
+
+//booléen de choix du type de dessin
+bool deDrawing = false;
 
 //centres des différents cercles
 GPoint MN_center_1, MN_center_2, MN_center_4, MN_center_8, MN_center_16, MN_center_32;
@@ -70,6 +76,63 @@ static void init_pos_circles() {
   
 }
 
+// **************
+// * Animations *
+// **************
+
+//Gestion du rebouclage du dessin pour grossissement des cercles
+static void drawingHandler() {
+  
+//  APP_LOG(APP_LOG_LEVEL_DEBUG, "Dessin, radius : %d", inc);
+  //si le dedrawing est encore en cours
+  if(deDrawing) {
+    
+    //on reboucle en attendant
+    app_timer_register(_DELTA_ANIM, drawingHandler, NULL);
+    
+  //condition de rebouclage
+  } else if(inc < _RADIUS_1) {
+
+    //incrément
+    inc ++;
+
+    //bouclage
+    layer_mark_dirty(s_global_layer);
+
+    //rebouclage
+    app_timer_register(_DELTA_ANIM, drawingHandler, NULL);
+
+  }
+    
+}
+
+//gestion du rétrécissement des cercles
+static void deDrawingHandler() {
+  
+  //passage du booléen de dedraw à true
+  deDrawing = true;
+  
+  //condition de bouclage
+  if (inc >= 0) {
+    
+     //incrément
+    inc --;
+
+    //bouclage
+    layer_mark_dirty(s_global_layer);
+
+    //rebouclage
+    app_timer_register(_DELTA_ANIM, deDrawingHandler, NULL);
+    
+  } else {
+    
+    //si inc = 0 on replace à false le booléen de dedraw
+    deDrawing = false;
+    
+  }
+  
+}
+
 // ***********
 // * Dessins *
 // ***********
@@ -81,21 +144,21 @@ static void draw_full_circles(GContext *ctx) {
   graphics_context_set_fill_color(ctx, MN_color);
   
   //dessin des points des minutes
-  graphics_fill_circle(ctx, MN_center_1, _RADIUS_1);
-  graphics_fill_circle(ctx, MN_center_2, _RADIUS_1);
-  graphics_fill_circle(ctx, MN_center_4, _RADIUS_1);
-  graphics_fill_circle(ctx, MN_center_8, _RADIUS_1);
-  graphics_fill_circle(ctx, MN_center_16, _RADIUS_1);
-  graphics_fill_circle(ctx, MN_center_32, _RADIUS_1);
+  graphics_fill_circle(ctx, MN_center_1, inc);
+  graphics_fill_circle(ctx, MN_center_2, inc);
+  graphics_fill_circle(ctx, MN_center_4, inc);
+  graphics_fill_circle(ctx, MN_center_8, inc);
+  graphics_fill_circle(ctx, MN_center_16, inc);
+  graphics_fill_circle(ctx, MN_center_32, inc);
   
   //application de la couleur des minutes au dessin
   graphics_context_set_fill_color(ctx, HR_color);
   
   //dessin des points des heures
-  graphics_fill_circle(ctx, HR_center_1, _RADIUS_1);
-  graphics_fill_circle(ctx, HR_center_2, _RADIUS_1);
-  graphics_fill_circle(ctx, HR_center_4, _RADIUS_1);
-  graphics_fill_circle(ctx, HR_center_8, _RADIUS_1);
+  graphics_fill_circle(ctx, HR_center_1, inc);
+  graphics_fill_circle(ctx, HR_center_2, inc);
+  graphics_fill_circle(ctx, HR_center_4, inc);
+  graphics_fill_circle(ctx, HR_center_8, inc);
   
 }
 
@@ -178,26 +241,39 @@ void global_layer_update_proc(Layer *layer, GContext *ctx) {
   //en premier, dessin des cercles pleins
   draw_full_circles(ctx);
   
-  //dessin des cercles intérieurs pour affichage de l'heure
-  draw_intern_circles(ctx);
+  //condition de dessin des cercles internes
+  if(inc >= _RADIUS_1 && !deDrawing) {
+    
+    //dessin des cercles intérieurs pour affichage de l'heure
+    draw_intern_circles(ctx);
+
+  }  
+  
 }
 
 //hook appelé lors du changement de temps
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
+  //si dessin normal
+  if (inc != 99) {
+  
+    //dédraw des cercles
+    app_timer_register(_DELTA_ANIM, deDrawingHandler, NULL);  
+  
+  } else {
+    
+    //sinon, premier dessin donc juste draw
+    inc = 1;
+    
+  }
+      
   //Maj de l'heure dans les variables locales
   update_local_time();
-  
+
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "passage");
-  
-  //dessin des cercles en état initial si pas premier handler
-  if(first_time_handler)
-    //passage du booléen à faux
-    first_time_handler = false;
-  
-  else
-    //dessin du layer
-    layer_mark_dirty(s_global_layer); 
+
+  //dessin
+  app_timer_register(_DELTA_ANIM, drawingHandler, NULL);
   
 }
 
@@ -256,17 +332,20 @@ void init(void) {
   HR_color = GColorCyan;
   MN_color = GColorRed;
   
-  //initialisation de la position des cercles
-  init_pos_circles();
-  
-  //initialisation de l'heure dans les variables locales
-  update_local_time();
-  
   // Show the Window on the watch, with animated=true
   window_stack_push(s_main_window, true);
   
   // Register with TickTimerService
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  
+  //premier dessin
+  //drawindHandler();
+  
+  //initialisation de la position des cercles
+  init_pos_circles();
+  
+  //initialisation de l'heure dans les variables locales
+  update_local_time();
   
 }
 
