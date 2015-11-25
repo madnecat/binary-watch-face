@@ -76,6 +76,36 @@ static void init_pos_circles() {
   
 }
 
+// ***********
+// * Updates *
+// ***********
+
+//Procédure de maj de l'heure dans les variables locales
+static void update_local_time() {
+
+  //initialisation de l'heure
+  time_t temp = time(NULL); 
+  
+  //récupération de la structure contenant l'heure
+  struct tm *tick_time = localtime(&temp);
+  
+  //buffer d'écriture
+  static char buffer[] = "00";
+  
+  //écriture de l'heure actuelle dans le buffer
+  strftime(buffer, sizeof("00"), "%I", tick_time);
+  
+  //récupération de l'heure sous forme d'entier
+  hour = atoi(buffer);
+  
+  //écriture des minutes actuelles dans le buffer
+  strftime(buffer, sizeof("00"), "%M", tick_time);
+  
+  //récupération des minutes sous forme d'entier
+  minutes = atoi(buffer);
+  
+}
+
 // **************
 // * Animations *
 // **************
@@ -83,7 +113,15 @@ static void init_pos_circles() {
 //Gestion du rebouclage du dessin pour grossissement des cercles
 static void drawingHandler() {
   
-//  APP_LOG(APP_LOG_LEVEL_DEBUG, "Dessin, radius : %d", inc);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "Dessin, radius : %d, H : %d, M : %d", inc, hour, minutes);
+  
+  //fin de notification, recalcul du l'heure
+  if(hour == 0 && minutes == 0)  {
+    
+    //calcul de l'heure
+    update_local_time();
+    
+  }
   //si le dedrawing est encore en cours
   if(deDrawing) {
     
@@ -209,32 +247,6 @@ static void draw_intern_circles(GContext *ctx) {
 // * Mises à jour contextuelles *
 // ******************************
 
-//Procédure de maj de l'heure dans les variables locales
-static void update_local_time() {
-
-  //initialisation de l'heure
-  time_t temp = time(NULL); 
-  
-  //récupération de la structure contenant l'heure
-  struct tm *tick_time = localtime(&temp);
-  
-  //buffer d'écriture
-  static char buffer[] = "00";
-  
-  //écriture de l'heure actuelle dans le buffer
-  strftime(buffer, sizeof("00"), "%I", tick_time);
-  
-  //récupération de l'heure sous forme d'entier
-  hour = atoi(buffer);
-  
-  //écriture des minutes actuelles dans le buffer
-  strftime(buffer, sizeof("00"), "%M", tick_time);
-  
-  //récupération des minutes sous forme d'entier
-  minutes = atoi(buffer);
-  
-}
-
 //fonction de mise à jour du layer de dessin
 void global_layer_update_proc(Layer *layer, GContext *ctx) {
   
@@ -269,6 +281,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
       
   //Maj de l'heure dans les variables locales
   update_local_time();
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "H : %d, M : %d", hour, minutes);
 
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "passage");
 
