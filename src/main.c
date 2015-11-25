@@ -46,6 +46,9 @@ static TextLayer *s_date_layer;
 //booléen de choix du type de dessin
 bool deDrawing = false;
 
+//booléen de connexion bluetooth
+bool bluetoothConnect = true;
+
 //initialisation du layer de BG
 bool initBG = false;
 
@@ -91,6 +94,26 @@ static void init_pos_circles() {
 // ***********
 // * Updates *
 // ***********
+
+//fonction lancée lorsque perte du signal bluetooth
+static void bluetooth_callback(bool connected) {
+  
+  //si bluetooth perdu
+  if(!connected) {
+    
+    // double vibration de la montre
+    vibes_double_pulse();
+   
+  //si bluetooth retrouvé
+  } else if (connected) {
+    
+    //courte vibration de la montre
+    vibes_short_pulse();
+    
+  }
+}
+
+
 
 //Procédure de maj de l'heure dans les variables locales
 static void update_local_time() {
@@ -423,6 +446,9 @@ void init(void) {
   
   //initialisation de l'heure dans les variables locales
   update_local_time();
+  
+  // Inscription du callback au service bluetooth
+  bluetooth_connection_service_subscribe(bluetooth_callback);
   
 }
 
