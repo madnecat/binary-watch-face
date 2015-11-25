@@ -154,15 +154,6 @@ static void update_local_time() {
 //Gestion du rebouclage du dessin pour grossissement des cercles
 static void drawingHandler() {
   
-  //APP_LOG(APP_LOG_LEVEL_DEBUG, "Dessin, radius : %d, H : %d, M : %d", inc, hour, minutes);
-  
-  //fin de notification, recalcul du l'heure
-  if(hour == 0 && minutes == 0)  {
-    
-    //calcul de l'heure
-    update_local_time();
-    
-  }
   //si le dedrawing est encore en cours
   if(deDrawing) {
     
@@ -316,6 +307,14 @@ static void draw_intern_circles(GContext *ctx) {
 //fonction de mise à jour du layer de dessin
 void global_layer_update_proc(Layer *layer, GContext *ctx) {
     
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "test, H : %d, M : %d", hour, minutes);
+  
+  if(hour == 0 && minutes == 0) {
+    
+    update_local_time();
+    
+  }
+  
   //dessin du BG
   drawInitialBG(layer, ctx);
     
