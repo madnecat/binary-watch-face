@@ -1,8 +1,12 @@
 {
     "appKeys": {
-        "BG_COLOR": 1,
-        "HR_COLOR": 3,
-        "MN_COLOR": 2
+        "BG_CENTER": 3,
+        "BG_HOURS": 2,
+        "BG_MINUTES": 1,
+        "COL_DAY": 6,
+        "COL_HOURS": 5,
+        "COL_MINUTES": 4,
+        "DISPLAY_DAY": 7
     },
     "capabilities": [
         "configurable"
@@ -12,6 +16,30 @@
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "images/ICO_1",
+                "name": "ICO_1",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "png-trans"
+            },
+            {
+                "file": "images/MAIN_IMAGE_2",
+                "name": "MAIN_IMAGE_2",
+                "targetPlatforms": [
+                    "basalt"
+                ],
+                "type": "png-trans"
+            },
+            {
+                "file": "images/MAIN_IMAGE_1",
+                "name": "MAIN_IMAGE_1",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "png-trans"
+            },
             {
                 "file": "fonts/8-bit_wonder.ttf",
                 "name": "EIGHT_BIT_20",

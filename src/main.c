@@ -1,4 +1,14 @@
 #include <pebble.h>
+#include "pbl-math.h"
+
+//configurations
+#define _BG_MINUTES 1
+#define _BG_HOURS 2
+#define _BG_CENTER 3
+#define _COL_MINUTES 4
+#define _COL_HOURS 5
+#define _COL_DAY 6
+#define _DISPLAY_DAY 7
 
 //rayon du cercle plein
 #define _RADIUS_1 8
@@ -37,6 +47,19 @@ int hour, minutes;
 //incrément de dessin d'animation !! valeur de base -10 pour détection du premier dessin
 int inc = -10;
 
+/*
+ * rayon de la watchface (en fonction de la taille de l'écran) (outer circle)
+ * défini dans main_window_load()
+ * si hauteur < largeur, alors hauteur, sinon largeur
+ */
+int circle_radius = -1;
+
+// rayon du cercle des heures (outer circle)
+int hour_circle_radius = -1;
+
+// rayon du cercle de la date (inner circle)
+int day_circle_radius = -1;
+
 //variable de police du jour
 static GFont s_date_font;
 
@@ -49,10 +72,11 @@ bool deDrawing = false;
 //booléen de connexion bluetooth
 bool bluetoothConnect = true;
 
-//initialisation du layer de BG
-bool initBG = false;
+//booléen d'affichage de la date
+bool displayDay;
 
 //centres des différents cercles
+GPoint GP_center;
 GPoint MN_center_1, MN_center_2, MN_center_4, MN_center_8, MN_center_16, MN_center_32;
 GPoint HR_center_1, HR_center_2, HR_center_4, HR_center_8, HR_center_16;
 
@@ -66,28 +90,117 @@ GPoint HR_center_1, HR_center_2, HR_center_4, HR_center_8, HR_center_16;
 // * Initialisations *
 // *******************
 
+static void readPersistantData() {
+  
+  //tampon d'écriture des couleurs
+  int tmp;
+  
+  //application des paramètres
+  if(persist_read_int(_BG_MINUTES)) {
+    
+    tmp = persist_read_int(_BG_MINUTES);
+    
+    BG_color_M = GColorFromHEX(tmp);
+    
+    tmp = persist_read_int(_BG_HOURS);
+    
+    BG_color_H = GColorFromHEX(tmp);
+    
+    tmp = persist_read_int(_BG_CENTER);
+    
+    BG_color_C = GColorFromHEX(tmp);
+    
+    tmp = persist_read_int(_COL_MINUTES);
+    
+    MN_color = GColorFromHEX(tmp);
+    
+    tmp = persist_read_int(_COL_HOURS);
+    
+    HR_color = GColorFromHEX(tmp);
+    
+    tmp = persist_read_int(_COL_DAY);
+    
+    TXT_color = GColorFromHEX(tmp);
+
+    displayDay = persist_read_bool(_DISPLAY_DAY);
+    
+  } else {
+    
+    //initialisation des couleurs
+    BG_color_M = GColorBlack ;
+    
+    BG_color_H = GColorCobaltBlue;
+    
+    BG_color_C = GColorBlack;
+    
+    HR_color = GColorBlack;
+    
+    MN_color = GColorCobaltBlue;
+    
+    TXT_color = GColorCobaltBlue;
+    
+    displayDay = true;
+    
+  }
+  
+}
+
 //initialisation des coordonnées des cercles
 static void init_pos_circles() {
   
   //instanciation du layer
-  Layer *root_layer = window_get_root_layer(s_main_window);
+//  Layer *root_layer = window_get_root_layer(s_main_window);
   
   //coordonnées de la fenêtre principale
-  GRect bounds = layer_get_bounds(root_layer);
+//  GRect bounds = layer_get_bounds(root_layer);
   
-  //coordonnées des points des minutes
-  MN_center_1 = GPoint(bounds.size.w / 2, bounds.size.h / 15);
-  MN_center_2 = GPoint((bounds.size.w / 9) * 8, bounds.size.h / 3.25);
-  MN_center_4 = GPoint((bounds.size.w / 9) * 8, (bounds.size.h / 3.25) * 2.25);
-  MN_center_8 = GPoint(bounds.size.w / 2, bounds.size.h - bounds.size.h / 15);
-  MN_center_16 = GPoint(bounds.size.w / 9, (bounds.size.h / 3.25) * 2.25);
-  MN_center_32 = GPoint(bounds.size.w / 9, bounds.size.h / 3.25);
+  // distance entre le centre et les cercles des minutes
+  int distance_minutes_from_center = hour_circle_radius + pbl_floor((circle_radius - hour_circle_radius) / 2);
+  
+  MN_center_1 = GPoint(GP_center.x, GP_center.y - distance_minutes_from_center);
+  MN_center_2 = GPoint(GP_center.x + distance_minutes_from_center*pbl_cos(M_PI/6), GP_center.y - distance_minutes_from_center*pbl_sin(M_PI/6));
+  MN_center_4 = GPoint(GP_center.x + distance_minutes_from_center*pbl_cos(M_PI/6), GP_center.y + distance_minutes_from_center*pbl_sin(M_PI/6));
+  MN_center_8 = GPoint(GP_center.x, GP_center.y + distance_minutes_from_center);
+  MN_center_16 = GPoint(GP_center.x - distance_minutes_from_center*pbl_cos(M_PI/6), GP_center.y + distance_minutes_from_center*pbl_sin(M_PI/6));
+  MN_center_32 = GPoint(GP_center.x - distance_minutes_from_center*pbl_cos(M_PI/6), GP_center.y - distance_minutes_from_center*pbl_sin(M_PI/6));
   
   //coordonnées des points des heures
-  HR_center_1 = GPoint(bounds.size.w / 2, bounds.size.h / 4.5);
-  HR_center_2 = GPoint(bounds.size.w - bounds.size.w / 4.5, bounds.size.h / 2);
-  HR_center_4 = GPoint(bounds.size.w / 2, bounds.size.h - bounds.size.h / 4.5);
-  HR_center_8 = GPoint(bounds.size.w / 4.5, bounds.size.h / 2);
+  int distance_hours_from_center = day_circle_radius + pbl_floor((hour_circle_radius - day_circle_radius) / 2);
+  
+  HR_center_1 = GPoint(GP_center.x, GP_center.y - distance_hours_from_center);
+  HR_center_2 = GPoint(GP_center.x + distance_hours_from_center, GP_center.y);
+  HR_center_4 = GPoint(GP_center.x, GP_center.y + distance_hours_from_center);
+  HR_center_8 = GPoint(GP_center.x - distance_hours_from_center, GP_center.y);
+  
+  //coordonnées des points des minutes
+  //MN_center_1 = GPoint(bounds.size.w / 2, bounds.size.h / 15);
+  //MN_center_2 = GPoint((bounds.size.w / 9) * 8, bounds.size.h / 3.25);
+  //MN_center_4 = GPoint((bounds.size.w / 9) * 8, (bounds.size.h / 3.25) * 2.25);
+  //MN_center_8 = GPoint(bounds.size.w / 2, bounds.size.h - bounds.size.h / 15);
+  //MN_center_16 = GPoint(bounds.size.w / 9, (bounds.size.h / 3.25) * 2.25);
+  //MN_center_32 = GPoint(bounds.size.w / 9, bounds.size.h / 3.25);
+  
+  //coordonnées des points des heures
+  //HR_center_1 = GPoint(bounds.size.w / 2, bounds.size.h / 4.5);
+  //HR_center_2 = GPoint(bounds.size.w - bounds.size.w / 4.5, bounds.size.h / 2);
+  //HR_center_4 = GPoint(bounds.size.w / 2, bounds.size.h - bounds.size.h / 4.5);
+  //HR_center_8 = GPoint(bounds.size.w / 4.5, bounds.size.h / 2);
+  
+  //récupération de version de la montre
+  //int version = watch_info_get_model();
+    
+  //si pebble time [steel]
+  //if(version == 3 || version == 4 ) {
+    //case WATCH_INFO_MODEL_PEBBLE_TIME || WATCH_INFO_MODEL_PEBBLE_TIME_STEEL :
+
+    //dcallage des centres
+   // APP_LOG(APP_LOG_LEVEL_DEBUG, "PT");
+  //  HR_center_1.y += 5;
+  //  HR_center_4.y -= 5;
+  //  MN_center_1.y += 5;
+  //  MN_center_8.y -= 5;
+
+  //}
   
 }
 
@@ -142,8 +255,9 @@ static void update_local_time() {
   //écrit la date dans le buffer, check du format
   strftime(buffer, sizeof(buffer), "%d", tick_time);
   
-  // affichage de la date dans le layer
-  text_layer_set_text(s_date_layer, buffer);
+  if(displayDay)
+    // affichage de la date dans le layer
+    text_layer_set_text(s_date_layer, buffer);
   
 }
 
@@ -358,9 +472,98 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
 }
 
-// *****************************************
+// ********************************
+// * Récupération des messages JS *
+// ********************************
+
+static void inbox_received_handler(DictionaryIterator *iter, void *context) {
+  
+  //récupération des valeurs dans le dictionnaire
+  Tuple *bg_minutes = dict_find(iter, _BG_MINUTES);  
+  Tuple *bg_hours = dict_find(iter, _BG_HOURS);  
+  Tuple *bg_center = dict_find(iter, _BG_CENTER);  
+  Tuple *col_minutes = dict_find(iter, _COL_MINUTES);  
+  Tuple *col_hours = dict_find(iter, _COL_HOURS);  
+  Tuple *col_day = dict_find(iter, _COL_DAY);  
+  Tuple *display_day = dict_find(iter, _DISPLAY_DAY);  
+  
+  //si valeurs existantes
+  if(bg_minutes) {
+    
+    //variable de recueil des infos
+    int tmp;
+    
+    //gestion du bg des minutes
+    tmp = bg_minutes->value->int32;
+    
+    persist_write_int(_BG_MINUTES, tmp);
+    
+    BG_color_M = GColorFromHEX(tmp);
+    
+    //gestion du bg des heures
+    tmp = bg_hours->value->int32;
+    
+    persist_write_int(_BG_HOURS, tmp);
+    
+    BG_color_H = GColorFromHEX(tmp);
+    
+    //gestion du bg du centre
+    tmp = bg_center->value->int32;
+    
+    persist_write_int(_BG_CENTER, tmp);
+    
+    BG_color_C = GColorFromHEX(tmp);
+    
+    //gestion de la couelur des minutes
+    tmp = col_minutes->value->int32;
+    
+    persist_write_int(_COL_MINUTES, tmp);
+    
+    MN_color = GColorFromHEX(tmp);
+    
+    //gestion de la couleur des heures
+    tmp = col_hours->value->int32;
+    
+    persist_write_int(_COL_HOURS, tmp);
+    
+    HR_color = GColorFromHEX(tmp);
+    
+    //gestion de la couleur du jour
+    tmp = col_day->value->int32;
+    
+    persist_write_int(_COL_DAY, tmp);
+    
+    TXT_color = GColorFromHEX(tmp);
+    
+    //gestion de l'affichage du jour
+    displayDay = (display_day->value->int8 != 0);
+    
+    persist_write_bool(_DISPLAY_DAY, displayDay);
+    
+    //application des paramètres
+    window_set_background_color(s_main_window, BG_color_M); 
+    
+    text_layer_set_background_color(s_date_layer, BG_color_C);
+    
+    text_layer_set_text_color(s_date_layer, TXT_color);
+    
+    update_local_time();
+    
+    layer_mark_dirty(s_global_layer);
+    
+    if(!displayDay) {
+      
+      text_layer_set_text(s_date_layer, "");
+      
+    }
+    
+  }
+  
+}
+
+// ******************************************
 // * Constructeur/destructeur de la fenêtre *
-// *****************************************
+// ******************************************
 
 //fonction de construction de la fenêtre
 static void main_window_load(Window *window) {
@@ -373,6 +576,26 @@ static void main_window_load(Window *window) {
   
   //coordonnées de la fenêtre principale
   GRect bounds = layer_get_bounds(root_layer);
+  
+  //calcul du centre
+  GP_center = grect_center_point(&bounds);
+  
+  // initilisation du rayon de la watchface
+  if (bounds.size.h < bounds.size.w){
+  
+    circle_radius = bounds.size.h / 2;
+
+  } else {
+    
+    circle_radius = bounds.size.w / 2;
+  
+  }
+    
+  // initialisation du cercle intérieur des heures
+  hour_circle_radius = 2 * pbl_floor(circle_radius/3);
+  
+  // initialisation du cercle intérieur de la date
+  day_circle_radius = pbl_floor(circle_radius/3);
   
   //création du layer de dessin
   s_global_layer = layer_create(GRect(0, 0, bounds.size.w, bounds.size.h));
@@ -414,13 +637,8 @@ static void main_window_unload(Window *window) {
 //fonction d'initialisation du contexte
 void init(void) {
   
-  //initialisation des couleurs / TODO paramétrer avec la page de config
-  BG_color_M = GColorBlack ;
-  BG_color_H = GColorIslamicGreen;
-  BG_color_C = GColorBlack ;
-  HR_color = GColorBlack ;
-  MN_color = GColorIslamicGreen;
-  TXT_color = GColorIslamicGreen;
+  //lecture des données persistantes
+  readPersistantData();
   
   // Create main Window element and assign to pointer
   s_main_window = window_create();
@@ -448,6 +666,10 @@ void init(void) {
   
   // Inscription du callback au service bluetooth
   bluetooth_connection_service_subscribe(bluetooth_callback);
+  
+  //enregistrement aux messages de configuration
+  app_message_register_inbox_received(inbox_received_handler);
+  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
   
 }
 
