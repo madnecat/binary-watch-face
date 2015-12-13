@@ -3,7 +3,7 @@
 Pebble.addEventListener('showConfiguration', function(e) {
   
   // Show config page
-  Pebble.openURL('http://necatdev.byethost12.com/config.html');
+  Pebble.openURL('http://necat-dev.byethost17.com/config.html');
   
 });
 
