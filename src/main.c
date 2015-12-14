@@ -166,6 +166,7 @@ static void init_pos_circles() {
   
   //coordonnées des points des heures
   int distance_hours_from_center = day_circle_radius + pbl_floor((hour_circle_radius - day_circle_radius) / 2);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "distance_hours_from_center : (%d)", distance_hours_from_center);
   
   HR_center_1 = GPoint(GP_center.x, GP_center.y - distance_hours_from_center);
   HR_center_2 = GPoint(GP_center.x + distance_hours_from_center, GP_center.y);
@@ -333,13 +334,16 @@ static void drawInitialBG(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, BG_color_H);
   
   //dessin du cercle des heures
-  graphics_fill_circle(ctx, grect_center_point(&bounds), MN_center_2.x - grect_center_point(&bounds).x - _RADIUS_1 / 4);
+  //graphics_fill_circle(ctx, grect_center_point(&bounds), MN_center_2.x - grect_center_point(&bounds).x - _RADIUS_1 / 4);
+  graphics_fill_circle(ctx, grect_center_point(&bounds), hour_circle_radius);
+  
   
     //set de couleur BG centre
   graphics_context_set_fill_color(ctx, BG_color_C);
   
   //dessin du cercle central
-  graphics_fill_circle(ctx, grect_center_point(&bounds), HR_center_2.x - grect_center_point(&bounds).x - 2 * _RADIUS_0);
+  //graphics_fill_circle(ctx, grect_center_point(&bounds), HR_center_2.x - grect_center_point(&bounds).x - 2 * _RADIUS_0);
+  graphics_fill_circle(ctx, grect_center_point(&bounds), day_circle_radius);
   
 }
 
@@ -581,14 +585,11 @@ static void main_window_load(Window *window) {
   GP_center = grect_center_point(&bounds);
   
   // initilisation du rayon de la watchface
-  if (bounds.size.h < bounds.size.w){
-  
+  // normalement h < w mais dans le cas d'une pebble rect, ça permet d'optimiser l'espace (si bug : inverser > par <)
+  if (bounds.size.h > bounds.size.w){
     circle_radius = bounds.size.h / 2;
-
   } else {
-    
     circle_radius = bounds.size.w / 2;
-  
   }
     
   // initialisation du cercle intérieur des heures
@@ -596,6 +597,8 @@ static void main_window_load(Window *window) {
   
   // initialisation du cercle intérieur de la date
   day_circle_radius = pbl_floor(circle_radius/3);
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "circle_radius : (%d)\n hour_circle_radius : (%d)\nday_circle_radius : (%d)", circle_radius, hour_circle_radius, day_circle_radius);
   
   //création du layer de dessin
   s_global_layer = layer_create(GRect(0, 0, bounds.size.w, bounds.size.h));

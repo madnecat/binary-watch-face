@@ -17,14 +17,6 @@
     "resources": {
         "media": [
             {
-                "file": "images/ICO_1",
-                "name": "ICO_1",
-                "targetPlatforms": [
-                    "chalk"
-                ],
-                "type": "png-trans"
-            },
-            {
                 "file": "images/MAIN_IMAGE_2",
                 "name": "MAIN_IMAGE_2",
                 "targetPlatforms": [
@@ -35,6 +27,14 @@
             {
                 "file": "images/MAIN_IMAGE_1",
                 "name": "MAIN_IMAGE_1",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "png-trans"
+            },
+            {
+                "file": "images/ICO_1",
+                "name": "ICO_1",
                 "targetPlatforms": [
                     "chalk"
                 ],
