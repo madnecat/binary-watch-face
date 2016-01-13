@@ -75,6 +75,10 @@ bool bluetoothConnect = true;
 //booléen d'affichage de la date
 bool displayDay;
 
+//booléen pour détection de l'initialisation
+bool binit = true;
+bool externInitialised = false;
+
 //centres des différents cercles
 GPoint GP_center;
 GPoint MN_center_1, MN_center_2, MN_center_4, MN_center_8, MN_center_16, MN_center_32;
@@ -166,7 +170,7 @@ static void init_pos_circles() {
   
   //coordonnées des points des heures
   int distance_hours_from_center = day_circle_radius + pbl_floor((hour_circle_radius - day_circle_radius) / 2);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "distance_hours_from_center : (%d)", distance_hours_from_center);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "distance_hours_from_center : (%d)", distance_hours_from_center);
   
   HR_center_1 = GPoint(GP_center.x, GP_center.y - distance_hours_from_center);
   HR_center_2 = GPoint(GP_center.x + distance_hours_from_center, GP_center.y);
@@ -268,15 +272,28 @@ static void update_local_time() {
 
 //Gestion du rebouclage du dessin pour grossissement des cercles
 static void drawingHandler() {
-  
+
   //si le dedrawing est encore en cours
   if(deDrawing) {
     
     //on reboucle en attendant
     app_timer_register(_DELTA_ANIM, drawingHandler, NULL);
     
+  //cas particulier, initialisation
+  } else if(binit && (inc < _RADIUS_0 || !externInitialised)) {
+    //incrément
+    inc ++;
+
+    //bouclage
+    layer_mark_dirty(s_global_layer);
+
+    //rebouclage
+    app_timer_register(_DELTA_ANIM, drawingHandler, NULL);
+
   //condition de rebouclage
-  } else if(inc < _RADIUS_1) {
+  } else if(inc < _RADIUS_0) {
+    //Maj de l'heure dans les variables locales
+    update_local_time();
 
     //incrément
     inc ++;
@@ -287,13 +304,16 @@ static void drawingHandler() {
     //rebouclage
     app_timer_register(_DELTA_ANIM, drawingHandler, NULL);
 
-  }
+    //si on a fini la séquence d'initialisation
+  } else if(inc >= _RADIUS_0 && binit)
+    //désactivation de l'init
+    binit = false;
     
 }
 
 //gestion du rétrécissement des cercles
 static void deDrawingHandler() {
-  
+
   //passage du booléen de dedraw à true
   deDrawing = true;
   
@@ -347,6 +367,31 @@ static void drawInitialBG(Layer *layer, GContext *ctx) {
   
 }
 
+//procédure de dessin des cercles extérieurs sans animation
+static void draw_full_circles_no_animate(GContext *ctx) {
+  
+  //application de la couleur des minutes au dessin
+  graphics_context_set_fill_color(ctx, MN_color);
+  
+  //dessin des points des minutes
+  graphics_fill_circle(ctx, MN_center_1, _RADIUS_1);
+  graphics_fill_circle(ctx, MN_center_2, _RADIUS_1);
+  graphics_fill_circle(ctx, MN_center_4, _RADIUS_1);
+  graphics_fill_circle(ctx, MN_center_8, _RADIUS_1);
+  graphics_fill_circle(ctx, MN_center_16, _RADIUS_1);
+  graphics_fill_circle(ctx, MN_center_32, _RADIUS_1);
+  
+  //application de la couleur des minutes au dessin
+  graphics_context_set_fill_color(ctx, HR_color);
+  
+  //dessin des points des heures
+  graphics_fill_circle(ctx, HR_center_1, _RADIUS_1);
+  graphics_fill_circle(ctx, HR_center_2, _RADIUS_1);
+  graphics_fill_circle(ctx, HR_center_4, _RADIUS_1);
+  graphics_fill_circle(ctx, HR_center_8, _RADIUS_1);
+  
+}
+
 //procédure de dessin des cercles en état initial
 static void draw_full_circles(GContext *ctx) {
   
@@ -377,7 +422,6 @@ static void draw_full_circles(GContext *ctx) {
 static void handle_internal(GContext *ctx, int *unit, int stud, GPoint center, GColor color) {
   
 //  APP_LOG(APP_LOG_LEVEL_DEBUG, "unité = %d, stud : %d", *unit, stud);
-  
   //étude du cas
   if(*(unit) / stud > 0) {
     
@@ -390,7 +434,7 @@ static void handle_internal(GContext *ctx, int *unit, int stud, GPoint center, G
     graphics_context_set_fill_color(ctx, color);
     
     //dessin du cercle
-    graphics_fill_circle(ctx, center, _RADIUS_0);
+    graphics_fill_circle(ctx, center, inc);
     
   }
   
@@ -400,8 +444,7 @@ static void handle_internal(GContext *ctx, int *unit, int stud, GPoint center, G
 static void draw_intern_circles(GContext *ctx) {
   
   //application de la couleur de l'arrière plan
-  graphics_context_set_fill_color(ctx, BG_color_M);
-  
+  //graphics_context_set_fill_color(ctx, BG_color_M);
   //étude des minutes
   handle_internal(ctx, &minutes, 32, MN_center_32, BG_color_M);
   handle_internal(ctx, &minutes, 16, MN_center_16, BG_color_M);
@@ -425,7 +468,7 @@ static void draw_intern_circles(GContext *ctx) {
 //fonction de mise à jour du layer de dessin
 void global_layer_update_proc(Layer *layer, GContext *ctx) {
     
-  //APP_LOG(APP_LOG_LEVEL_DEBUG, "test, H : %d, M : %d", hour, minutes);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "test, H : %d, M : %d, inc : %d", hour, minutes, inc);
   
   if(hour == 0 && minutes == 0) {
     
@@ -435,17 +478,49 @@ void global_layer_update_proc(Layer *layer, GContext *ctx) {
   
   //dessin du BG
   drawInitialBG(layer, ctx);
-    
-  //en premier, dessin des cercles pleins
-  draw_full_circles(ctx);
   
-  //condition de dessin des cercles internes
-  if(inc >= _RADIUS_1 && !deDrawing) {
+  //si initialisation
+  if (binit) {
     
-    //dessin des cercles intérieurs pour affichage de l'heure
-    draw_intern_circles(ctx);
+    //si les cercles extérieurs ne sont pas encore dessinés
+    if(!externInitialised && inc < _RADIUS_1) {
 
-  }  
+      //en premier, dessin des cercles pleins
+      draw_full_circles(ctx);
+
+    //sinon cercles extérieurs dessinés
+    } else if (!externInitialised && inc >= _RADIUS_1 && binit) {
+      //passage du booléen à true et raz inc
+      externInitialised = true;
+
+      inc = 0;
+
+      //dessin non animé des extérieurs
+      draw_full_circles_no_animate(ctx);
+
+      //dessin animé des cercles intérieurs
+      draw_intern_circles(ctx);
+
+    //sinon animation dessin animé des cercles intérieurs  
+    } else {
+      //dessin non animé des extérieurs
+      draw_full_circles_no_animate(ctx);
+
+      //dessin animé des cercles intérieurs
+      draw_intern_circles(ctx);
+
+    }
+
+  //si pas initialisation
+  } else {
+
+    //dessin des cercles extérieurs non animés
+    draw_full_circles_no_animate(ctx);
+
+    //dessin des cercles intérieurs pour affichage de l'heure
+    draw_intern_circles(ctx); 
+
+  }
   
 }
 
@@ -453,20 +528,23 @@ void global_layer_update_proc(Layer *layer, GContext *ctx) {
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   //si dessin normal
-  if (inc != -10) {
-  
+  if (!binit) {
+    
     //dédraw des cercles
     app_timer_register(_DELTA_ANIM, deDrawingHandler, NULL);  
   
   } else {
     
+    //Maj de l'heure dans les variables locales
+    update_local_time();
+
     //sinon, premier dessin donc juste draw
     inc = 1;
     
   }
       
   //Maj de l'heure dans les variables locales
-  update_local_time();
+  //update_local_time();
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "H : %d, M : %d", hour, minutes);
 
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "passage");
@@ -598,7 +676,7 @@ static void main_window_load(Window *window) {
   // initialisation du cercle intérieur de la date
   day_circle_radius = pbl_floor(circle_radius/3);
   
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "circle_radius : (%d)\n hour_circle_radius : (%d)\nday_circle_radius : (%d)", circle_radius, hour_circle_radius, day_circle_radius);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "circle_radius : (%d)\n hour_circle_radius : (%d)\nday_circle_radius : (%d)", circle_radius, hour_circle_radius, day_circle_radius);
   
   //création du layer de dessin
   s_global_layer = layer_create(GRect(0, 0, bounds.size.w, bounds.size.h));
