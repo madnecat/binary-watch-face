@@ -42,7 +42,16 @@
             },
             {
                 "file": "fonts/8-bit_wonder.ttf",
-                "name": "EIGHT_BIT_20",
+                "name": "EIGHT_BIT_17",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "font"
+            },
+            {
+                "file": "fonts/8-bit_wonder.ttf",
+                "name": "EIGHT_BIT_7",
                 "targetPlatforms": [
                     "basalt",
                     "chalk"
