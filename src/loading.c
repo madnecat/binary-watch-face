@@ -55,17 +55,17 @@ void readPersistantData(GColor *bg_m, GColor *bg_h, GColor *bg_c, GColor *color_
   } else {
     
     //initialisation des couleurs
-    *bg_m = GColorBlack ;
+    *bg_m = GColorVividCerulean ;
     
-    *bg_h = GColorCobaltBlue;
+    *bg_h = GColorYellow;
     
-    *bg_c = GColorBlack;
+    *bg_c = GColorPurple;
     
-    *color_h = GColorBlack;
+    *color_h = GColorPurple;
     
-    *color_m = GColorCobaltBlue;
+    *color_m = GColorPurple;
     
-    *color_c = GColorCobaltBlue;
+    *color_c = GColorYellow;
     
     *display_day = true;
     
